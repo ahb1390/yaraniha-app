@@ -188,20 +188,44 @@ jobs:
 
       - name: Prepare iOS Platform (Clean Build)
         run: |
-          # ۱. حذف پوشه ios اگر به اشتباه در مخزن گیت کامیت شده باشد
           rm -rf ios
-          # ۲. افزودن پلتفرم iOS از صفر (چون پوشه حذف شد، همیشه با موفقیت اجرا می‌شود)
           npx cap add ios
-          # ۳. همگام‌سازی وب‌اسست و پلاگین‌ها با پروژه iOS
           npx cap sync ios
 
-      - name: Install CocoaPods Dependencies
-        working-directory: ./ios/App
-        run: pod install
+      - name: Debug iOS Directory Structure
+        # این مرحله فقط برای اینه که ببینیم دقیقاً چه فایل‌هایی ساخته شدن
+        run: |
+          echo "=== Listing iOS directory structure ==="
+          ls -R ios || echo "ios directory not found!"
+
+      - name: Install CocoaPods Dependencies (Smart Find)
+        # به جای حدس زدن مسیر، خود اسکریپت Podfile رو پیدا می‌کنه
+        run: |
+          # پیدا کردن دایرکتوری حاوی Podfile
+          PODFILE_DIR=$(find ios -name "Podfile" -exec dirname {} \; | head -n 1)
+
+          if [ -z "$PODFILE_DIR" ]; then
+            echo "❌ Error: Podfile not found anywhere in the ios directory!"
+            echo "This usually means 'npx cap add ios' failed silently or Capacitor config is missing."
+            exit 1
+          fi
+
+          echo "✅ Found Podfile in: $PODFILE_DIR"
+          cd "$PODFILE_DIR"
+          pod install
 
       - name: Build iOS (Unsigned Workaround)
-        working-directory: ./ios/App
+        # مسیر xcworkspace رو هم هوشمند می‌کنیم
         run: |
+          WORKSPACE_PATH=$(find ios -name "App.xcworkspace" | head -n 1)
+          if [ -z "$WORKSPACE_PATH" ]; then
+            echo "❌ Error: App.xcworkspace not found!"
+            exit 1
+          fi
+
+          WORKSPACE_DIR=$(dirname "$WORKSPACE_PATH")
+          cd "$WORKSPACE_DIR"
+
           xcodebuild -workspace App.xcworkspace \
                      -scheme App \
                      -configuration Release \
@@ -214,8 +238,17 @@ jobs:
                      PROVISIONING_PROFILE_SPECIFIER=""
 
       - name: Create IPA
-        working-directory: ./ios/App/build/Build/Products/Release-iphoneos
         run: |
+          # پیدا کردن مسیر دقیق App.app
+          APP_PATH=$(find ios -name "App.app" -type d | head -n 1)
+          if [ -z "$APP_PATH" ]; then
+            echo "❌ Error: App.app not found after build!"
+            exit 1
+          fi
+
+          APP_DIR=$(dirname "$APP_PATH")
+          cd "$APP_DIR"
+
           mkdir -p Payload
           cp -r App.app Payload/
           zip -r Yaraniha-iOS-unsigned.ipa Payload
@@ -224,7 +257,8 @@ jobs:
         uses: actions/upload-artifact@v4
         with:
           name: ios-packages
-          path: ios/App/build/Build/Products/Release-iphoneos/*.ipa
+          # استفاده از wildcard برای پیدا کردن فایل ipa در هر عمقی
+          path: ios/**/*.ipa
           if-no-files-found: warn
   # ============================================
   # JOB 6: Create GitHub Release
