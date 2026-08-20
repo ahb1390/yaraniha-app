@@ -3,101 +3,250 @@ name: Build All Platforms
 on:
   push:
     branches: [ main, master ]
-  workflow_dispatch: # اجازه اجرای دستی هم می‌دهد
+  workflow_dispatch:
 
 jobs:
-  # 1. ساخت خروجی‌های لینوکس (7 فرمت)
+  # ============================================
+  # JOB 1: Linux
+  # ============================================
   build-linux:
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v4
-      - uses: actions/setup-node@v4
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
         with:
-          node-version: '20'
+          node-version: '22'
           cache: 'npm'
-      - name: Install dependencies
+
+      - name: Install system dependencies
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y rpm fakeroot flatpak-builder snapd
+          sudo snap install snapcraft --classic
+
+      - name: Install npm dependencies
         run: |
           echo "allow-scripts=true" > .npmrc
-          npm ci
-      - name: Build Linux
+          npm install
+
+      - name: Build Linux packages
         run: npm run dist:linux
-      - name: Upload Linux Artifacts
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Upload Linux artifacts
         uses: actions/upload-artifact@v4
         with:
           name: linux-packages
-          path: release/*.{AppImage,deb,rpm,tar.gz,snap,pacman,flatpak}
+          path: |
+            release/*.AppImage
+            release/*.deb
+            release/*.rpm
+            release/*.tar.gz
+            release/*.snap
+            release/*.pacman
+            release/*.flatpak
+          if-no-files-found: warn
 
-  # 2. ساخت خروجی‌های ویندوز (4 فرمت)
+  # ============================================
+  # JOB 2: Windows
+  # ============================================
   build-windows:
-    runs-on: ubuntu-latest
+    runs-on: windows-latest
     steps:
-      - uses: actions/checkout@v4
-      - uses: actions/setup-node@v4
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
         with:
-          node-version: '20'
+          node-version: '22'
           cache: 'npm'
-      - name: Install dependencies
+
+      - name: Install npm dependencies
         run: |
           echo "allow-scripts=true" > .npmrc
-          npm ci
-      - name: Build Windows
+          npm install
+
+      - name: Build Windows packages
         run: npm run dist:win
-      - name: Upload Windows Artifacts
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Upload Windows artifacts
         uses: actions/upload-artifact@v4
         with:
           name: windows-packages
-          path: release/*.{exe,msi,appx}
+          path: |
+            release/*.exe
+            release/*.msi
+            release/*.appx
+          if-no-files-found: warn
 
-  # 3. ساخت خروجی‌های مک (3 فرمت)
-  build-mac:
+  # ============================================
+  # JOB 3: macOS
+  # ============================================
+  build-macos:
     runs-on: macos-latest
     steps:
-      - uses: actions/checkout@v4
-      - uses: actions/setup-node@v4
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
         with:
-          node-version: '20'
+          node-version: '22'
           cache: 'npm'
-      - name: Install dependencies
+
+      - name: Install npm dependencies
         run: |
           echo "allow-scripts=true" > .npmrc
-          npm ci
-      - name: Build macOS
+          npm install
+
+      - name: Build macOS packages
         run: npm run dist:mac
         env:
-          CSC_IDENTITY_AUTO_DISCOVERY: false # غیرفعال کردن امضای دیجیتال برای بیلد آزمایشی
-      - name: Upload macOS Artifacts
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          CSC_IDENTITY_AUTO_DISCOVERY: false
+
+      - name: Upload macOS artifacts
         uses: actions/upload-artifact@v4
         with:
           name: macos-packages
-          path: release/*.{dmg,zip,pkg}
+          path: |
+            release/*.dmg
+            release/*.zip
+            release/*.pkg
+          if-no-files-found: warn
 
-  # 4. ساخت خروجی اندروید (APK)
+  # ============================================
+  # JOB 4: Android
+  # ============================================
   build-android:
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v4
-      - uses: actions/setup-node@v4
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
         with:
-          node-version: '20'
+          node-version: '22'
           cache: 'npm'
-      - uses: actions/setup-java@v4
+
+      - name: Setup Java JDK
+        uses: actions/setup-java@v4
         with:
           distribution: 'temurin'
           java-version: '17'
-      - uses: android-actions/setup-android@v3
-      - name: Install dependencies
+
+      - name: Setup Android SDK
+        uses: android-actions/setup-android@v3
+
+      - name: Install npm dependencies
         run: |
           echo "allow-scripts=true" > .npmrc
-          npm ci
+          npm install
+
       - name: Sync Capacitor
         run: npx cap sync android
+
       - name: Build Android APK
         working-directory: ./android
         run: |
           chmod +x gradlew
           ./gradlew assembleRelease
-      - name: Upload Android Artifacts
+
+      - name: Upload Android artifacts
         uses: actions/upload-artifact@v4
         with:
           name: android-packages
           path: android/app/build/outputs/apk/release/*.apk
+          if-no-files-found: warn
+
+  # ============================================
+  # JOB 5: iOS
+  # ============================================
+  build-ios:
+    runs-on: macos-latest
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+          cache: 'npm'
+
+      - name: Install npm dependencies
+        run: |
+          echo "allow-scripts=true" > .npmrc
+          npm install
+
+      - name: Sync Capacitor iOS
+        run: npx cap sync ios
+
+      - name: Add iOS platform
+        run: npx cap add ios || true
+
+      - name: Build iOS (unsigned)
+        working-directory: ./ios/App
+        run: |
+          xcodebuild -workspace App.xcworkspace \
+                     -scheme App \
+                     -configuration Release \
+                     -sdk iphoneos \
+                     -derivedDataPath build \
+                     CODE_SIGN_IDENTITY="" \
+                     CODE_SIGNING_REQUIRED=NO \
+                     CODE_SIGNING_ALLOWED=NO
+
+      - name: Create IPA
+        working-directory: ./ios/App/build/Build/Products/Release-iphoneos
+        run: |
+          mkdir -p Payload
+          cp -r App.app Payload/
+          zip -r Yaraniha-iOS-unsigned.ipa Payload
+
+      - name: Upload iOS artifacts
+        uses: actions/upload-artifact@v4
+        with:
+          name: ios-packages
+          path: ios/App/build/Build/Products/Release-iphoneos/*.ipa
+          if-no-files-found: warn
+
+  # ============================================
+  # JOB 6: Create GitHub Release
+  # ============================================
+  release:
+    needs: [build-linux, build-windows, build-macos, build-android, build-ios]
+    runs-on: ubuntu-latest
+    if: github.event_name == 'push' && (github.ref == 'refs/heads/main' || github.ref == 'refs/heads/master')
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Download all artifacts
+        uses: actions/download-artifact@v4
+        with:
+          path: artifacts
+
+      - name: Create Release
+        uses: softprops/action-gh-release@v1
+        with:
+          tag_name: v${{ github.run_number }}
+          name: Release ${{ github.run_number }} - All Platforms
+          draft: false
+          prerelease: false
+          files: |
+            artifacts/linux-packages/*
+            artifacts/windows-packages/*
+            artifacts/macos-packages/*
+            artifacts/android-packages/*
+            artifacts/ios-packages/*
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}

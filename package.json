@@ -46,7 +46,7 @@
         { "target": "msi", "arch": ["x64"] },
         { "target": "appx", "arch": ["x64"] },
         { "target": "nsis-web", "arch": ["x64"] },
-        { "target": "squirrelWindows" }
+        { "target": "squirrel", "arch": ["x64"] }
       ],
       "icon": "build/icon.ico"
     },
