@@ -31,7 +31,7 @@ jobs:
       - name: Install npm dependencies
         run: |
           echo "allow-scripts=true" > .npmrc
-          npm ci
+          npm install
 
       - name: Build Linux packages
         run: npm run dist:linux
@@ -72,7 +72,7 @@ jobs:
       - name: Install npm dependencies
         run: |
           echo "allow-scripts=true" > .npmrc
-          npm ci
+          npm install
 
       - name: Build Windows packages
         run: npm run dist:win
@@ -109,7 +109,7 @@ jobs:
       - name: Install npm dependencies
         run: |
           echo "allow-scripts=true" > .npmrc
-          npm ci
+          npm install
 
       - name: Build macOS packages
         run: npm run dist:mac
@@ -155,7 +155,7 @@ jobs:
       - name: Install npm dependencies
         run: |
           echo "allow-scripts=true" > .npmrc
-          npm ci
+          npm install
 
       - name: Sync Capacitor
         run: npx cap sync android
@@ -199,7 +199,7 @@ jobs:
       - name: Install npm dependencies
         run: |
           echo "allow-scripts=true" > .npmrc
-          npm ci
+          npm install
 
       - name: Sync Capacitor iOS
         run: npx cap sync ios
