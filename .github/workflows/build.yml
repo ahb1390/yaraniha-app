@@ -1,0 +1,103 @@
+name: Build All Platforms
+
+on:
+  push:
+    branches: [ main, master ]
+  workflow_dispatch: # اجازه اجرای دستی هم می‌دهد
+
+jobs:
+  # 1. ساخت خروجی‌های لینوکس (7 فرمت)
+  build-linux:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+          cache: 'npm'
+      - name: Install dependencies
+        run: |
+          echo "allow-scripts=true" > .npmrc
+          npm ci
+      - name: Build Linux
+        run: npm run dist:linux
+      - name: Upload Linux Artifacts
+        uses: actions/upload-artifact@v4
+        with:
+          name: linux-packages
+          path: release/*.{AppImage,deb,rpm,tar.gz,snap,pacman,flatpak}
+
+  # 2. ساخت خروجی‌های ویندوز (4 فرمت)
+  build-windows:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+          cache: 'npm'
+      - name: Install dependencies
+        run: |
+          echo "allow-scripts=true" > .npmrc
+          npm ci
+      - name: Build Windows
+        run: npm run dist:win
+      - name: Upload Windows Artifacts
+        uses: actions/upload-artifact@v4
+        with:
+          name: windows-packages
+          path: release/*.{exe,msi,appx}
+
+  # 3. ساخت خروجی‌های مک (3 فرمت)
+  build-mac:
+    runs-on: macos-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+          cache: 'npm'
+      - name: Install dependencies
+        run: |
+          echo "allow-scripts=true" > .npmrc
+          npm ci
+      - name: Build macOS
+        run: npm run dist:mac
+        env:
+          CSC_IDENTITY_AUTO_DISCOVERY: false # غیرفعال کردن امضای دیجیتال برای بیلد آزمایشی
+      - name: Upload macOS Artifacts
+        uses: actions/upload-artifact@v4
+        with:
+          name: macos-packages
+          path: release/*.{dmg,zip,pkg}
+
+  # 4. ساخت خروجی اندروید (APK)
+  build-android:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+          cache: 'npm'
+      - uses: actions/setup-java@v4
+        with:
+          distribution: 'temurin'
+          java-version: '17'
+      - uses: android-actions/setup-android@v3
+      - name: Install dependencies
+        run: |
+          echo "allow-scripts=true" > .npmrc
+          npm ci
+      - name: Sync Capacitor
+        run: npx cap sync android
+      - name: Build Android APK
+        working-directory: ./android
+        run: |
+          chmod +x gradlew
+          ./gradlew assembleRelease
+      - name: Upload Android Artifacts
+        uses: actions/upload-artifact@v4
+        with:
+          name: android-packages
+          path: android/app/build/outputs/apk/release/*.apk
