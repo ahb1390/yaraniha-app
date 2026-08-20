@@ -1,0 +1,9 @@
+{
+  "appId": "com.yaraniha.app",
+  "appName": "Yaraniha",
+  "webDir": "www",
+  "bundledWebRuntime": false,
+  "server": {
+    "androidScheme": "https"
+  }
+}

@@ -177,7 +177,7 @@ jobs:
       - name: Setup Node.js
         uses: actions/setup-node@v4
         with:
-          node-version: '22'
+          node-version: '20'
           cache: 'npm'
 
       - name: Install npm dependencies
@@ -186,46 +186,28 @@ jobs:
           npm config set registry https://registry.npmjs.org/
           npm install
 
-      - name: Prepare iOS Platform (Clean Build)
+      - name: Prepare iOS Platform
         run: |
+          set -e
+          echo "🧹 Cleaning previous ios folder..."
           rm -rf ios
+
+          echo "➕ Adding iOS platform..."
           npx cap add ios
+
+          echo "🔄 Syncing Capacitor (Copying www folder to iOS)..."
           npx cap sync ios
 
-      - name: Debug iOS Directory Structure
-        # این مرحله فقط برای اینه که ببینیم دقیقاً چه فایل‌هایی ساخته شدن
-        run: |
-          echo "=== Listing iOS directory structure ==="
-          ls -R ios || echo "ios directory not found!"
+          echo "✅ iOS platform prepared successfully."
 
-      - name: Install CocoaPods Dependencies (Smart Find)
-        # به جای حدس زدن مسیر، خود اسکریپت Podfile رو پیدا می‌کنه
-        run: |
-          # پیدا کردن دایرکتوری حاوی Podfile
-          PODFILE_DIR=$(find ios -name "Podfile" -exec dirname {} \; | head -n 1)
-
-          if [ -z "$PODFILE_DIR" ]; then
-            echo "❌ Error: Podfile not found anywhere in the ios directory!"
-            echo "This usually means 'npx cap add ios' failed silently or Capacitor config is missing."
-            exit 1
-          fi
-
-          echo "✅ Found Podfile in: $PODFILE_DIR"
-          cd "$PODFILE_DIR"
-          pod install
+      - name: Install CocoaPods Dependencies
+        working-directory: ./ios/App
+        run: pod install
 
       - name: Build iOS (Unsigned Workaround)
-        # مسیر xcworkspace رو هم هوشمند می‌کنیم
+        working-directory: ./ios/App
         run: |
-          WORKSPACE_PATH=$(find ios -name "App.xcworkspace" | head -n 1)
-          if [ -z "$WORKSPACE_PATH" ]; then
-            echo "❌ Error: App.xcworkspace not found!"
-            exit 1
-          fi
-
-          WORKSPACE_DIR=$(dirname "$WORKSPACE_PATH")
-          cd "$WORKSPACE_DIR"
-
+          echo "🔨 Building iOS app..."
           xcodebuild -workspace App.xcworkspace \
                      -scheme App \
                      -configuration Release \
@@ -239,7 +221,7 @@ jobs:
 
       - name: Create IPA
         run: |
-          # پیدا کردن مسیر دقیق App.app
+          echo "📦 Creating IPA file..."
           APP_PATH=$(find ios -name "App.app" -type d | head -n 1)
           if [ -z "$APP_PATH" ]; then
             echo "❌ Error: App.app not found after build!"
@@ -257,8 +239,7 @@ jobs:
         uses: actions/upload-artifact@v4
         with:
           name: ios-packages
-          # استفاده از wildcard برای پیدا کردن فایل ipa در هر عمقی
-          path: ios/**/*.ipa
+          path: ios/**/Yaraniha-iOS-unsigned.ipa
           if-no-files-found: warn
   # ============================================
   # JOB 6: Create GitHub Release
