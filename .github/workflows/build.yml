@@ -187,15 +187,14 @@ jobs:
           npm config set registry https://registry.npmjs.org/
           npm install
 
-      - name: Prepare iOS platform
-        run: |
-          # اگر پوشه ios وجود نداشت، آن را می‌سازد. در غیر این صورت فقط sync می‌کند.
-          if [ ! -d "ios" ]; then
-            npx cap add ios
-          fi
-          npx cap sync ios
+      - name: Add iOS Platform
+        # حالا که پکیج در package.json هست، این دستور با موفقیت پوشه ios را می‌سازد
+        run: npx cap add ios
 
-      - name: Build iOS (unsigned)
+      - name: Sync Capacitor iOS
+        run: npx cap sync ios
+
+      - name: Build iOS (Unsigned)
         working-directory: ./ios/App
         run: |
           xcodebuild -workspace App.xcworkspace \
@@ -220,7 +219,6 @@ jobs:
           name: ios-packages
           path: ios/App/build/Build/Products/Release-iphoneos/*.ipa
           if-no-files-found: warn
-
   # ============================================
   # JOB 6: Create GitHub Release
   # ============================================
