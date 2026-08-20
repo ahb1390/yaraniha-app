@@ -186,12 +186,19 @@ jobs:
           npm config set registry https://registry.npmjs.org/
           npm install
 
-      - name: Sync Capacitor iOS
-        # از sync استفاده می‌کنیم چون اگر پوشه ios وجود داشته باشد، دستور add باعث خطا می‌شود
-        run: npx cap sync ios
+      - name: Add or Sync iOS Platform
+        # این شرط هوشمند بررسی می‌کند که آیا پوشه ios وجود دارد یا خیر
+        run: |
+          if [ -d "ios" ]; then
+            echo "پوشه ios وجود دارد، در حال همگام‌سازی (Sync)..."
+            npx cap sync ios
+          else
+            echo "پوشه ios وجود ندارد، در حال افزودن پلتفرم..."
+            npx cap add ios
+          fi
 
       - name: Install CocoaPods Dependencies
-        # این مرحله در محیط CI بسیار حیاتی است و گاهی cap sync آن را به درستی اجرا نمی‌کند
+        # این مرحله در محیط CI بسیار حیاتی است
         working-directory: ./ios/App
         run: pod install
 
