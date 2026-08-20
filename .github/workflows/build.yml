@@ -24,7 +24,8 @@ jobs:
       - name: Install system dependencies
         run: |
           sudo apt-get update
-          sudo apt-get install -y rpm fakeroot
+          # اضافه شدن libarchive-tools برای رفع خطای bsdtar در ساخت pacman
+          sudo apt-get install -y rpm fakeroot libarchive-tools
 
       - name: Install npm dependencies
         run: |
@@ -46,6 +47,7 @@ jobs:
             release/*.deb
             release/*.rpm
             release/*.tar.gz
+            release/*.pacman
           if-no-files-found: warn
 
   # ============================================
@@ -66,7 +68,6 @@ jobs:
       - name: Install npm dependencies
         run: |
           echo "allow-scripts=true" > .npmrc
-          # اجبار به استفاده از رجیستری رسمی برای جلوگیری از خطای Timeout ایران
           npm config set registry https://registry.npmjs.org/
           npm install
 
@@ -186,12 +187,13 @@ jobs:
           npm config set registry https://registry.npmjs.org/
           npm install
 
-      - name: Add iOS platform safely
-        # اگر پلتفرم از قبل وجود داشت، خطا ندهد و رد شود
-        run: npx cap add ios || echo "iOS platform already exists, skipping add."
-
-      - name: Sync Capacitor iOS
-        run: npx cap sync ios
+      - name: Prepare iOS platform
+        run: |
+          # اگر پوشه ios وجود نداشت، آن را می‌سازد. در غیر این صورت فقط sync می‌کند.
+          if [ ! -d "ios" ]; then
+            npx cap add ios
+          fi
+          npx cap sync ios
 
       - name: Build iOS (unsigned)
         working-directory: ./ios/App
