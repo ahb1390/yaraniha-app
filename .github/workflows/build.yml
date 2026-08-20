@@ -29,6 +29,7 @@ jobs:
       - name: Install npm dependencies
         run: |
           echo "allow-scripts=true" > .npmrc
+          npm config set registry https://registry.npmjs.org/
           npm install
 
       - name: Build Linux packages
@@ -45,7 +46,6 @@ jobs:
             release/*.deb
             release/*.rpm
             release/*.tar.gz
-            release/*.pacman
           if-no-files-found: warn
 
   # ============================================
@@ -66,6 +66,8 @@ jobs:
       - name: Install npm dependencies
         run: |
           echo "allow-scripts=true" > .npmrc
+          # اجبار به استفاده از رجیستری رسمی برای جلوگیری از خطای Timeout ایران
+          npm config set registry https://registry.npmjs.org/
           npm install
 
       - name: Build Windows packages
@@ -99,6 +101,7 @@ jobs:
       - name: Install npm dependencies
         run: |
           echo "allow-scripts=true" > .npmrc
+          npm config set registry https://registry.npmjs.org/
           npm install
 
       - name: Build macOS packages
@@ -143,6 +146,7 @@ jobs:
       - name: Install npm dependencies
         run: |
           echo "allow-scripts=true" > .npmrc
+          npm config set registry https://registry.npmjs.org/
           npm install
 
       - name: Sync Capacitor
@@ -179,10 +183,12 @@ jobs:
       - name: Install npm dependencies
         run: |
           echo "allow-scripts=true" > .npmrc
+          npm config set registry https://registry.npmjs.org/
           npm install
 
-      - name: Add iOS platform
-        run: npx cap add ios || true
+      - name: Add iOS platform safely
+        # اگر پلتفرم از قبل وجود داشت، خطا ندهد و رد شود
+        run: npx cap add ios || echo "iOS platform already exists, skipping add."
 
       - name: Sync Capacitor iOS
         run: npx cap sync ios
