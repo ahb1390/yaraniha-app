@@ -186,19 +186,16 @@ jobs:
           npm config set registry https://registry.npmjs.org/
           npm install
 
-      - name: Add or Sync iOS Platform
-        # این شرط هوشمند بررسی می‌کند که آیا پوشه ios وجود دارد یا خیر
+      - name: Prepare iOS Platform (Clean Build)
         run: |
-          if [ -d "ios" ]; then
-            echo "پوشه ios وجود دارد، در حال همگام‌سازی (Sync)..."
-            npx cap sync ios
-          else
-            echo "پوشه ios وجود ندارد، در حال افزودن پلتفرم..."
-            npx cap add ios
-          fi
+          # ۱. حذف پوشه ios اگر به اشتباه در مخزن گیت کامیت شده باشد
+          rm -rf ios
+          # ۲. افزودن پلتفرم iOS از صفر (چون پوشه حذف شد، همیشه با موفقیت اجرا می‌شود)
+          npx cap add ios
+          # ۳. همگام‌سازی وب‌اسست و پلاگین‌ها با پروژه iOS
+          npx cap sync ios
 
       - name: Install CocoaPods Dependencies
-        # این مرحله در محیط CI بسیار حیاتی است
         working-directory: ./ios/App
         run: pod install
 
