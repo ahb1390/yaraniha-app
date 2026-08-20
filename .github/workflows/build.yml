@@ -165,7 +165,6 @@ jobs:
           name: android-packages
           path: android/app/build/outputs/apk/release/*.apk
           if-no-files-found: warn
-
   # ============================================
   # JOB 5: iOS
   # ============================================
@@ -187,14 +186,16 @@ jobs:
           npm config set registry https://registry.npmjs.org/
           npm install
 
-      - name: Add iOS Platform
-        # حالا که پکیج در package.json هست، این دستور با موفقیت پوشه ios را می‌سازد
-        run: npx cap add ios
-
       - name: Sync Capacitor iOS
+        # از sync استفاده می‌کنیم چون اگر پوشه ios وجود داشته باشد، دستور add باعث خطا می‌شود
         run: npx cap sync ios
 
-      - name: Build iOS (Unsigned)
+      - name: Install CocoaPods Dependencies
+        # این مرحله در محیط CI بسیار حیاتی است و گاهی cap sync آن را به درستی اجرا نمی‌کند
+        working-directory: ./ios/App
+        run: pod install
+
+      - name: Build iOS (Unsigned Workaround)
         working-directory: ./ios/App
         run: |
           xcodebuild -workspace App.xcworkspace \
@@ -204,7 +205,9 @@ jobs:
                      -derivedDataPath build \
                      CODE_SIGN_IDENTITY="" \
                      CODE_SIGNING_REQUIRED=NO \
-                     CODE_SIGNING_ALLOWED=NO
+                     CODE_SIGNING_ALLOWED=NO \
+                     PROVISIONING_PROFILE="" \
+                     PROVISIONING_PROFILE_SPECIFIER=""
 
       - name: Create IPA
         working-directory: ./ios/App/build/Build/Products/Release-iphoneos
