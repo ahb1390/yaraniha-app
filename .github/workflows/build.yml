@@ -1,115 +1,147 @@
-name: Build and Save to Repo
+name: Build and Release All Platforms
 
 on:
   push:
     branches: [ main, master ]
+    tags: [ 'v*' ]
   workflow_dispatch:
 
 jobs:
-  build-all:
-    runs-on: ${{ matrix.os }}
-    strategy:
-      matrix:
-        os: [ubuntu-latest, windows-latest, macos-latest]
-    
+  # ============================================
+  # JOB 1: Linux
+  # ============================================
+  build-linux:
+    runs-on: ubuntu-latest
     steps:
-      - name: Checkout code
-        uses: actions/checkout@v4
-        with:
-          persist-credentials: false # امنیت بیشتر هنگام پوش کردن
-
-      - name: Setup Node.js
-        uses: actions/setup-node@v4
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
         with:
           node-version: '22'
           cache: 'npm'
-
-      - name: Install system dependencies (Linux only)
-        if: runner.os == 'Linux'
+      - name: Install system dependencies
         run: sudo apt-get update && sudo apt-get install -y rpm fakeroot
-
       - name: Install npm dependencies
         run: |
           echo "allow-scripts=true" > .npmrc
           npm config set registry https://registry.npmjs.org/
           npm install
-
-      - name: Build Desktop Apps
-        run: |
-          if [ "$RUNNER_OS" == "Linux" ]; then
-            npm run dist:linux
-          elif [ "$RUNNER_OS" == "Windows" ]; then
-            npm run dist:win
-          else
-            npm run dist:mac
-          fi
+      - name: Build Linux
+        run: npm run dist:linux
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-          CSC_IDENTITY_AUTO_DISCOVERY: false # غیرفعال کردن امضای مک برای جلوگیری از خطا
-
-      - name: Collect Artifacts into /dist folder
-        run: |
-          mkdir -p dist/${{ runner.os }}
-          cp release/* dist/${{ runner.os }}/ || true
-          
-      - name: Upload Dist Folder as Artifact (Temporary)
+      
+      # ✅ اضافه کردن مرحله آپلود Artifact برای لینوکس
+      - name: Upload Linux Artifacts
         uses: actions/upload-artifact@v4
         with:
-          name: dist-${{ runner.os }}
-          path: dist/
-          retention-days: 1
+          name: linux-packages
+          path: release/*
+          if-no-files-found: error
 
   # ============================================
-  # JOB: Merge all artifacts and push to repo
+  # JOB 2: Windows
   # ============================================
-  save-to-repo:
-    needs: build-all
+  build-windows:
+    runs-on: windows-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+          cache: 'npm'
+      - name: Install npm dependencies
+        run: |
+          echo "allow-scripts=true" > .npmrc
+          npm config set registry https://registry.npmjs.org/
+          npm install
+      - name: Build Windows
+        run: npm run dist:win
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+      
+      # ✅ اضافه کردن مرحله آپلود Artifact برای ویندوز
+      - name: Upload Windows Artifacts
+        uses: actions/upload-artifact@v4
+        with:
+          name: windows-packages
+          path: release/*
+          if-no-files-found: error
+
+  # ============================================
+  # JOB 3: macOS
+  # ============================================
+  build-macos:
+    runs-on: macos-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+          cache: 'npm'
+      - name: Install npm dependencies
+        run: |
+          echo "allow-scripts=true" > .npmrc
+          npm config set registry https://registry.npmjs.org/
+          npm install
+      - name: Build macOS
+        run: npm run dist:mac
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          CSC_IDENTITY_AUTO_DISCOVERY: false
+      
+      # ✅ اضافه کردن مرحله آپلود Artifact برای مک
+      - name: Upload macOS Artifacts
+        uses: actions/upload-artifact@v4
+        with:
+          name: macos-packages
+          path: release/*
+          if-no-files-found: error
+
+  # ============================================
+  # JOB 4: Create GitHub Release & Upload Assets
+  # ============================================
+  create-release:
+    needs: [build-linux, build-windows, build-macos]
     runs-on: ubuntu-latest
-    permissions:
-      contents: write # اجازه نوشتن در مخزن
-    
+    if: github.event_name == 'push' && (github.ref == 'refs/heads/main' || github.ref == 'refs/heads/master')
     steps:
       - name: Checkout code
         uses: actions/checkout@v4
-        with:
-          token: ${{ secrets.GITHUB_TOKEN }}
-          fetch-depth: 0
 
+      # ✅ دانلود دقیق Artifactها با نام‌هایی که در بالا تعریف کردیم
       - name: Download Linux Artifacts
         uses: actions/download-artifact@v4
         with:
-          name: dist-Linux
-          path: temp-dist
-
+          name: linux-packages
+          path: artifacts/linux-packages
+      
       - name: Download Windows Artifacts
         uses: actions/download-artifact@v4
         with:
-          name: dist-Windows
-          path: temp-dist
-
+          name: windows-packages
+          path: artifacts/windows-packages
+      
       - name: Download macOS Artifacts
         uses: actions/download-artifact@v4
         with:
-          name: dist-macOS
-          path: temp-dist
+          name: macos-packages
+          path: artifacts/macos-packages
 
-      - name: Merge into /dist folder
-        run: |
-          mkdir -p dist
-          cp -r temp-dist/dist/Linux/* dist/ || true
-          cp -r temp-dist/dist/Windows/* dist/ || true
-          cp -r temp-dist/dist/macOS/* dist/ || true
-          rm -rf temp-dist
+      - name: Display structure of downloaded files
+        run: ls -R artifacts
 
-      - name: Commit and Push to Repository
-        run: |
-          git config user.name "GitHub Actions Bot"
-          git config user.email "actions@github.com"
-          git add dist/
-          # فقط اگر تغییری وجود داشت کامیت کن
-          if ! git diff --staged --quiet; then
-            git commit -m "chore: update build artifacts [skip ci]"
-            git push origin HEAD:main
-          else
-            echo "No changes in dist folder, skipping commit."
-          fi
+      - name: Create or Update Release
+        uses: softprops/action-gh-release@v1
+        with:
+          tag_name: v${{ github.run_number }}
+          name: Build ${{ github.run_number }} - All Platforms
+          draft: false
+          prerelease: true
+          generate_release_notes: true
+          # ✅ اشاره به مسیری که فایل‌ها دانلود شده‌اند
+          files: |
+            artifacts/linux-packages/*
+            artifacts/windows-packages/*
+            artifacts/macos-packages/*
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
