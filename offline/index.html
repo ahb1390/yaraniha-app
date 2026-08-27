@@ -1,0 +1,714 @@
+<!DOCTYPE html>
+<html lang="fa" dir="rtl">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover" />
+  <meta name="theme-color" id="themeMeta" content="#F5F7FB" />
+  <title>قطع ارتباط</title>
+
+  <!-- Favicon -->
+  <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 128 128'%3E%3Crect width='128' height='128' rx='32' fill='%231E3A8A'/%3E%3Cpath d='M34 78c8-14 18-21 30-21s22 7 30 21' fill='none' stroke='white' stroke-width='9' stroke-linecap='round'/%3E%3Ccircle cx='64' cy='46' r='12' fill='white'/%3E%3C/svg%3E" type="image/svg+xml" />
+
+  <script>
+    // تنظیم تم اولیه قبل از رندر شدن صفحه برای جلوگیری از پرش
+    try {
+      var savedTheme = localStorage.getItem('theme');
+      var systemDark = window.matchMedia && window.matchMedia('(prefers-color-scheme: dark)').matches;
+      var theme = savedTheme || (systemDark ? 'dark' : 'light');
+      document.documentElement.setAttribute('data-theme', theme);
+    } catch (e) {}
+  </script>
+
+  <style>
+    /* فونت وزیر یا یاران */
+    @font-face {
+      font-family: 'Yaran';
+      src: url('./assets/font/Yaran.woff2') format('woff2-variations');
+      font-weight: 100 900;
+      font-display: swap;
+    }
+
+    :root {
+      --color-bg: #F5F7FB;
+      --color-primary: #1E3A8A;
+      --color-primary-hover: #1E40AF;
+      --color-primary-glow: rgba(30, 58, 138, 0.15);
+      --color-primary-soft: rgba(30, 58, 138, 0.10);
+      --color-text: #0F172A;
+      --color-text-muted: #64748B;
+      --color-text-light: #94A3B8;
+      --color-border: #E2E8F0;
+      --color-error: #DC2626;
+      --color-error-soft: rgba(220, 38, 38, 0.09);
+      --color-success: #059669;
+      --color-success-soft: rgba(5, 150, 105, 0.09);
+      --color-surface: #FFFFFF;
+      --color-surface-rgb: 255, 255, 255;
+      --radius-md: 16px;
+      --radius-xl: 28px;
+      --shadow-lg: 0 20px 40px -8px rgba(15, 23, 42, 0.12);
+      --font-fa: 'Yaran', 'Vazir', 'IRANSans', Tahoma, sans-serif;
+      --transition: cubic-bezier(0.4, 0, 0.2, 1);
+      --safe-bottom: env(safe-area-inset-bottom, 0px);
+    }
+
+    [data-theme="dark"] {
+      --color-bg: #0B1120;
+      --color-primary: #60A5FA;
+      --color-primary-hover: #3B82F6;
+      --color-primary-glow: rgba(96, 165, 250, 0.2);
+      --color-primary-soft: rgba(96, 165, 250, 0.13);
+      --color-text: #F1F5F9;
+      --color-text-muted: #94A3B8;
+      --color-text-light: #64748B;
+      --color-border: #1E293B;
+      --color-error: #F87171;
+      --color-error-soft: rgba(248, 113, 113, 0.11);
+      --color-success: #34D399;
+      --color-success-soft: rgba(52, 211, 153, 0.11);
+      --color-surface: #1E293B;
+      --color-surface-rgb: 30, 41, 59;
+      --shadow-lg: 0 20px 40px -8px rgba(0, 0, 0, 0.5);
+    }
+
+    *, *::before, *::after {
+      box-sizing: border-box;
+      margin: 0;
+      padding: 0;
+    }
+
+    body {
+      font-family: var(--font-fa);
+      font-size: 15px;
+      line-height: 1.6;
+      color: var(--color-text);
+      background: var(--color-bg);
+      min-height: 100vh;
+      min-height: 100dvh;
+      overflow-x: hidden;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      transition: background-color 0.4s var(--transition), color 0.4s var(--transition);
+      position: relative;
+    }
+
+    /* پس‌زمینه متحرک و گرادینت */
+    body::before {
+      content: '';
+      position: fixed;
+      inset: -20px;
+      z-index: -2;
+      background-image:
+        radial-gradient(circle at 12% 18%, var(--color-primary-soft), transparent 32%),
+        radial-gradient(circle at 88% 82%, var(--color-primary-soft), transparent 28%),
+        linear-gradient(180deg, rgba(245, 247, 251, 0.35), rgba(245, 247, 251, 0.92));
+      filter: blur(8px) opacity(0.88);
+    }
+
+    [data-theme="dark"] body::before {
+      background-image:
+        radial-gradient(circle at 12% 18%, var(--color-primary-soft), transparent 32%),
+        radial-gradient(circle at 88% 82%, var(--color-primary-soft), transparent 28%),
+        linear-gradient(180deg, rgba(11, 17, 32, 0.32), rgba(11, 17, 32, 0.94));
+    }
+
+    button {
+      cursor: pointer;
+      border: 0;
+      touch-action: manipulation;
+      background: none;
+      font-family: var(--font-fa) !important;
+    }
+
+    .app-shell {
+      width: 100%;
+      max-width: 460px;
+      padding: 24px 16px calc(24px + var(--safe-bottom));
+      opacity: 0;
+      transform: translateY(20px);
+      animation: entryAnim 0.8s var(--transition) forwards;
+    }
+
+    @keyframes entryAnim {
+      to { opacity: 1; transform: translateY(0); }
+    }
+
+    /* کارت اصلی */
+    .login-card {
+      position: relative;
+      background: rgba(var(--color-surface-rgb), 0.85);
+      backdrop-filter: blur(24px) saturate(180%);
+      -webkit-backdrop-filter: blur(24px) saturate(180%);
+      border: 1px solid rgba(var(--color-surface-rgb), 0.6);
+      border-radius: var(--radius-xl);
+      box-shadow: var(--shadow-lg);
+      padding: 34px 28px;
+      overflow: hidden;
+      text-align: center;
+    }
+
+    [data-theme="dark"] .login-card {
+      border-color: rgba(255, 255, 255, 0.08);
+    }
+
+    .login-card::before {
+      content: '';
+      position: absolute;
+      top: 0;
+      right: 0;
+      left: 0;
+      height: 4px;
+      background: linear-gradient(90deg, transparent, var(--color-primary), transparent);
+      opacity: 0.75;
+    }
+
+    /* نشانگر وضعیت */
+    .status-badge {
+      display: inline-flex;
+      align-items: center;
+      gap: 9px;
+      padding: 8px 14px;
+      border-radius: 999px;
+      background: var(--color-error-soft);
+      color: var(--color-error);
+      font-size: 12px;
+      font-weight: 800;
+      margin-bottom: 24px;
+      user-select: none;
+    }
+
+    .status-dot {
+      position: relative;
+      width: 8px;
+      height: 8px;
+      border-radius: 50%;
+      background: currentColor;
+      flex-shrink: 0;
+    }
+
+    .status-dot::after {
+      content: '';
+      position: absolute;
+      inset: -5px;
+      border-radius: 50%;
+      border: 1px solid currentColor;
+      opacity: 0.65;
+      animation: statusRipple 2s infinite;
+    }
+
+    @keyframes statusRipple {
+      0% { transform: scale(0.55); opacity: 0.75; }
+      100% { transform: scale(1.35); opacity: 0; }
+    }
+
+    /* آیکون اصلی */
+    .offline-icon-wrap {
+      position: relative;
+      width: 92px;
+      height: 92px;
+      margin: 0 auto 20px;
+      display: grid;
+      place-items: center;
+      background: var(--color-surface);
+      border: 1px solid rgba(var(--color-surface-rgb), 0.65);
+      border-radius: 30px;
+      box-shadow: var(--shadow-lg);
+      color: var(--color-primary);
+    }
+
+    .offline-icon {
+      position: relative;
+      z-index: 2;
+      width: 38px;
+      height: 38px;
+    }
+
+    .pulse-ring {
+      position: absolute;
+      inset: -14px;
+      border-radius: 36px;
+      border: 1.5px solid var(--color-primary-soft);
+      pointer-events: none;
+      animation: pulseRing 2.8s ease-out infinite;
+    }
+
+    .pulse-ring.delay {
+      animation-delay: 1.35s;
+    }
+
+    @keyframes pulseRing {
+      0% { opacity: 0.9; transform: scale(0.88); }
+      70% { opacity: 0; transform: scale(1.12); }
+      100% { opacity: 0; transform: scale(1.12); }
+    }
+
+    .form-header h1 {
+      font-size: 24px;
+      font-weight: 800;
+      margin-bottom: 8px;
+    }
+
+    .form-header p {
+      font-size: 13.5px;
+      color: var(--color-text-muted);
+      max-width: 320px;
+      margin: 0 auto;
+      line-height: 1.9;
+    }
+
+    /* لیست راهنما */
+    .tips-list {
+      list-style: none;
+      display: grid;
+      gap: 10px;
+      margin: 22px 0 26px;
+      padding: 16px;
+      background: rgba(var(--color-surface-rgb), 0.45);
+      border: 1px solid rgba(var(--color-surface-rgb), 0.5);
+      border-radius: 20px;
+      text-align: right;
+    }
+
+    [data-theme="dark"] .tips-list {
+      background: rgba(255, 255, 255, 0.03);
+      border-color: rgba(255, 255, 255, 0.06);
+    }
+
+    .tips-list li {
+      display: flex;
+      align-items: flex-start;
+      gap: 10px;
+      color: var(--color-text-muted);
+      font-size: 13px;
+      line-height: 1.85;
+    }
+
+    .tips-list svg {
+      width: 17px;
+      height: 17px;
+      color: var(--color-primary);
+      flex-shrink: 0;
+      margin-top: 3px;
+    }
+
+    /* دکمه اصلی */
+    .btn-primary {
+      position: relative;
+      height: 56px;
+      width: 100%;
+      background: linear-gradient(135deg, var(--color-primary) 0%, var(--color-primary-hover) 100%);
+      color: white;
+      border-radius: var(--radius-md);
+      font-size: 16px;
+      font-weight: 800;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      gap: 10px;
+      box-shadow: 0 8px 20px -4px var(--color-primary-glow);
+      transition: transform 0.2s, box-shadow 0.2s;
+      overflow: hidden;
+    }
+
+    .btn-primary:hover {
+      transform: translateY(-2px);
+      box-shadow: 0 12px 24px -4px var(--color-primary-glow);
+    }
+
+    .btn-primary:active {
+      transform: translateY(0) scale(0.98);
+    }
+
+    .btn-primary.loading {
+      pointer-events: none;
+    }
+
+    .btn-primary.loading .btn-text,
+    .btn-primary.loading svg {
+      opacity: 0;
+    }
+
+    .btn-loader {
+      position: absolute;
+      width: 22px;
+      height: 22px;
+      border: 2.5px solid rgba(255, 255, 255, 0.3);
+      border-top-color: white;
+      border-radius: 50%;
+      opacity: 0;
+      animation: spin 0.8s linear infinite;
+    }
+
+    .btn-primary.loading .btn-loader {
+      opacity: 1;
+    }
+
+    @keyframes spin {
+      to { transform: rotate(360deg); }
+    }
+
+    .btn-primary svg {
+      width: 18px;
+      height: 18px;
+      transition: transform 0.35s var(--transition);
+    }
+
+    .btn-primary:hover svg {
+      transform: rotate(180deg);
+    }
+
+    /* دکمه تغییر تم */
+    .theme-toggle {
+      position: fixed;
+      top: 18px;
+      left: 18px;
+      z-index: 60;
+      width: 46px;
+      height: 46px;
+      border-radius: 16px;
+      background: rgba(var(--color-surface-rgb), 0.72);
+      border: 1px solid rgba(var(--color-surface-rgb), 0.55);
+      backdrop-filter: blur(18px) saturate(160%);
+      -webkit-backdrop-filter: blur(18px) saturate(160%);
+      display: grid;
+      place-items: center;
+      color: var(--color-text);
+      box-shadow: var(--shadow-lg);
+      transition: transform 0.2s var(--transition);
+    }
+
+    .theme-toggle:hover {
+      transform: translateY(-2px);
+    }
+
+    .theme-toggle svg {
+      width: 19px;
+      height: 19px;
+    }
+
+    html[data-theme="light"] .moon-icon { display: none; }
+    html[data-theme="dark"] .sun-icon { display: none; }
+
+    /* Toast Notification */
+    .toast {
+      position: fixed;
+      top: 24px;
+      left: 50%;
+      transform: translateX(-50%) translateY(-150%);
+      background: var(--color-surface);
+      border: 1px solid var(--color-border);
+      border-radius: var(--radius-md);
+      padding: 12px 18px;
+      display: flex;
+      align-items: center;
+      gap: 12px;
+      box-shadow: var(--shadow-lg);
+      z-index: 9999;
+      opacity: 0;
+      visibility: hidden;
+      transition: all 0.4s var(--transition);
+      min-width: 280px;
+      max-width: 90vw;
+    }
+
+    .toast.show {
+      transform: translateX(-50%) translateY(0);
+      opacity: 1;
+      visibility: visible;
+    }
+
+    .toast.success { border-right: 3px solid var(--color-success); }
+    .toast.error { border-right: 3px solid var(--color-error); }
+
+    .toast-icon {
+      width: 22px;
+      height: 22px;
+      flex-shrink: 0;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+    }
+    
+    .toast.success .toast-icon { color: var(--color-success); }
+    .toast.error .toast-icon { color: var(--color-error); }
+    .toast-icon svg { width: 100%; height: 100%; }
+
+    .toast-message {
+      font-size: 13px;
+      font-weight: 700;
+    }
+
+    /* Responsive */
+    @media (max-width: 480px) {
+      .app-shell { padding: 16px; }
+      .login-card { padding: 28px 18px; border-radius: 24px; }
+      .offline-icon-wrap { width: 82px; height: 82px; border-radius: 26px; }
+      .offline-icon { width: 34px; height: 34px; }
+      .btn-primary { height: 53px; }
+      
+      .toast {
+        top: auto;
+        bottom: 20px;
+        left: 16px;
+        right: 16px;
+        transform: translateY(150%);
+        min-width: 0;
+        width: auto;
+      }
+      .toast.show { transform: translateY(0); }
+    }
+
+    @media (prefers-reduced-motion: reduce) {
+      *, *::before, *::after {
+        animation-duration: 0.01ms !important;
+        transition-duration: 0.01ms !important;
+      }
+    }
+  </style>
+</head>
+
+<body>
+  <!-- دکمه تغییر تم -->
+  <button class="theme-toggle" id="themeToggle" type="button" aria-label="تغییر تم">
+    <svg class="sun-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+      <circle cx="12" cy="12" r="5"></circle>
+      <line x1="12" y1="1" x2="12" y2="3"></line>
+      <line x1="12" y1="21" x2="12" y2="23"></line>
+      <line x1="4.22" y1="4.22" x2="5.64" y2="5.64"></line>
+      <line x1="18.36" y1="18.36" x2="19.78" y2="19.78"></line>
+      <line x1="1" y1="12" x2="3" y2="12"></line>
+      <line x1="21" y1="12" x2="23" y2="12"></line>
+      <line x1="4.22" y1="19.78" x2="5.64" y2="18.36"></line>
+      <line x1="18.36" y1="5.64" x2="19.78" y2="4.22"></line>
+    </svg>
+    <svg class="moon-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+      <path d="M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 0 21 12.79z"></path>
+    </svg>
+  </button>
+
+  <main class="app-shell">
+    <div class="login-container offline-container">
+      <section class="login-card offline-card" aria-live="polite">
+        
+        <!-- وضعیت اتصال -->
+        <div class="status-badge" id="statusBadge">
+          <span class="status-dot"></span>
+          <span id="statusText">اتصال اینترنت برقرار نیست</span>
+        </div>
+
+        <!-- بخش آیکون و عنوان -->
+        <div class="offline-hero">
+          <div class="offline-icon-wrap">
+            <span class="pulse-ring"></span>
+            <span class="pulse-ring delay"></span>
+            <svg class="offline-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+              <line x1="1" y1="1" x2="23" y2="23"></line>
+              <path d="M16.72 11.06A10.94 10.94 0 0 1 19 12.55"></path>
+              <path d="M5 12.55a10.94 10.94 0 0 1 5.17-2.39"></path>
+              <path d="M10.71 5.05A16 16 0 0 1 22.58 9"></path>
+              <path d="M1.42 9a15.91 15.91 0 0 1 4.7-2.88"></path>
+              <path d="M8.53 16.11a6 6 0 0 1 6.95 0"></path>
+              <line x1="12" y1="20" x2="12.01" y2="20"></line>
+            </svg>
+          </div>
+
+          <header class="form-header">
+            <h1>آفلاین هستید</h1>
+            <p>
+              برای دسترسی به سامانه، لطفاً اتصال اینترنت خود را بررسی کرده و مجدداً تلاش کنید.
+            </p>
+          </header>
+        </div>
+
+        <!-- نکات راهنما -->
+        <ul class="tips-list">
+          <li>
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+              <path d="M5 12.55a11 11 0 0 1 14.08 0"></path>
+              <path d="M1.42 9a16 16 0 0 1 21.16 0"></path>
+              <path d="M8.53 16.11a6 6 0 0 1 6.95 0"></path>
+              <line x1="12" y1="20" x2="12.01" y2="20"></line>
+            </svg>
+            <span>اتصال Wi-Fi یا داده همراه را فعال کنید.</span>
+          </li>
+          <li>
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+              <path d="M23 4v6h-6"></path>
+              <path d="M20.49 15a9 9 0 1 1-2.12-9.36L23 10"></path>
+            </svg>
+            <span>مودم یا گوشی خود را یک بار خاموش و روشن کنید.</span>
+          </li>
+          <li>
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+              <path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"></path>
+            </svg>
+            <span>فیلترشکن یا پروکسی را موقتاً غیرفعال کنید.</span>
+          </li>
+        </ul>
+
+        <!-- دکمه تلاش مجدد -->
+        <div class="offline-actions">
+          <button type="button" class="btn-primary" id="retryBtn">
+            <span class="btn-text">تلاش مجدد</span>
+            <span class="btn-loader" aria-hidden="true"></span>
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+              <path d="M23 4v6h-6"></path>
+              <path d="M20.49 15a9 9 0 1 1-2.12-9.36L23 10"></path>
+            </svg>
+          </button>
+        </div>
+      </section>
+    </div>
+  </main>
+
+  <!-- نوتیفیکیشن -->
+  <div class="toast" id="toast" role="alert">
+    <span class="toast-icon" id="toastIcon"></span>
+    <span class="toast-message" id="toastMessage"></span>
+  </div>
+
+  <script>
+    (function () {
+      'use strict';
+
+      // --- Configuration ---
+      const TARGET_URL = 'https://app.yaraniha.ir'; // آدرس سایت خود را اینجا وارد کنید
+      
+      // --- Elements ---
+      const html = document.documentElement;
+      const themeToggle = document.getElementById('themeToggle');
+      const themeMeta = document.getElementById('themeMeta');
+      const toast = document.getElementById('toast');
+      const toastIcon = document.getElementById('toastIcon');
+      const toastMessage = document.getElementById('toastMessage');
+      const retryBtn = document.getElementById('retryBtn');
+      const statusBadge = document.getElementById('statusBadge');
+      const statusText = document.getElementById('statusText');
+
+      let toastTimer = null;
+
+      // --- Icons ---
+      const successIcon = `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"></path><polyline points="22 4 12 14.01 9 11.01"></polyline></svg>`;
+      const errorIcon = `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><circle cx="12" cy="12" r="10"></circle><line x1="12" y1="8" x2="12" y2="12"></line><line x1="12" y1="16" x2="12.01" y2="16"></line></svg>`;
+
+      // --- Theme Logic ---
+      function currentTheme() {
+        return html.getAttribute('data-theme') || 'light';
+      }
+
+      function applyTheme(theme) {
+        html.setAttribute('data-theme', theme);
+        try { localStorage.setItem('theme', theme); } catch (e) {}
+        if (themeMeta) {
+          themeMeta.setAttribute('content', theme === 'dark' ? '#0B1120' : '#F5F7FB');
+        }
+      }
+
+      if (themeToggle) {
+        themeToggle.addEventListener('click', () => {
+          const newTheme = currentTheme() === 'dark' ? 'light' : 'dark';
+          applyTheme(newTheme);
+        });
+      }
+
+      // --- Toast Logic ---
+      function showToast(message, type = 'success') {
+        if (!toast) return;
+        clearTimeout(toastTimer);
+        toast.className = 'toast ' + type;
+        toastIcon.innerHTML = type === 'success' ? successIcon : errorIcon;
+        toastMessage.textContent = message;
+        requestAnimationFrame(() => toast.classList.add('show'));
+        toastTimer = setTimeout(() => toast.classList.remove('show'), 3500);
+      }
+
+      // --- Network Logic ---
+      function setLoading(isLoading) {
+        if (!retryBtn) return;
+        if (isLoading) retryBtn.classList.add('loading');
+        else retryBtn.classList.remove('loading');
+      }
+
+      function updateNetStatus() {
+        const online = navigator.onLine;
+        if (statusBadge) statusBadge.classList.toggle('online', online); // Add CSS for .online if needed, currently handled by logic
+        if (statusText) {
+          statusText.textContent = online ? 'اتصال اینترنت برقرار شد' : 'اتصال اینترنت برقرار نیست';
+        }
+      }
+
+      function performRetry() {
+        setLoading(true);
+        
+        // Check for Electron/OfflineApp wrapper
+        if (window.offlineApp && typeof window.offlineApp.retry === 'function') {
+          window.offlineApp.retry();
+          return;
+        }
+        
+        // Standard Web/Capacitor Logic
+        if (navigator.onLine) {
+          showToast('در حال انتقال...', 'success');
+          setTimeout(() => {
+            window.location.href = TARGET_URL;
+          }, 1000);
+        } else {
+          showToast('هنوز اتصال اینترنت برقرار نیست', 'error');
+          setLoading(false);
+        }
+      }
+
+      // Event Listeners
+      if (retryBtn) retryBtn.addEventListener('click', performRetry);
+
+      window.addEventListener('online', () => {
+        updateNetStatus();
+        showToast('اتصال اینترنت برقرار شد؛ تلاش مجدد...', 'success');
+        setTimeout(performRetry, 1500);
+      });
+
+      window.addEventListener('offline', () => {
+        updateNetStatus();
+        showToast('اتصال اینترنت قطع شد', 'error');
+      });
+
+      // Capacitor Network Plugin Integration (if available)
+      if (typeof window.Capacitor !== 'undefined') {
+        import('@capacitor/network').then(({ Network }) => {
+          Network.getStatus().then(status => {
+             if(status.connected && !sessionStorage.getItem('retried')) {
+                 sessionStorage.setItem('retried', '1');
+                 window.location.href = TARGET_URL;
+             }
+          });
+          
+          Network.addListener('networkStatusChange', status => {
+            if (status.connected) {
+              showToast('اتصال برقرار شد', 'success');
+              setTimeout(() => window.location.href = TARGET_URL, 1000);
+            } else {
+              showToast('اتصال قطع شد', 'error');
+            }
+          });
+        }).catch(e => console.log('Capacitor Network not available'));
+      }
+
+      // Initial Check
+      updateNetStatus();
+      
+      // Auto-retry on load if online and hasn't retried yet
+      try {
+        if (navigator.onLine && !sessionStorage.getItem('offlineAutoRetried') && !window.offlineApp) {
+          sessionStorage.setItem('offlineAutoRetried', '1');
+          setTimeout(() => {
+            showToast('اتصال ظاهراً برقرار است؛ تلاش مجدد...', 'success');
+            performRetry();
+          }, 1500);
+        }
+      } catch (e) {}
+
+    })();
+  </script>
+</body>
+</html>
