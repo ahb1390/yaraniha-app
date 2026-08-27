@@ -1,0 +1,12 @@
+# .gitattributes
+# جلوگیری از دیف کردن فایل‌های باینری حجیم
+*.exe binary
+*.msi binary
+*.AppImage binary
+*.deb binary
+*.rpm binary
+*.tar.gz binary
+*.dmg binary
+*.zip binary
+*.apk binary
+*.ipa binary
