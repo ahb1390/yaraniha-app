@@ -1,4 +1,4 @@
-name: Build All Platforms (Artifacts Only)
+name: Build Desktop Platforms Only
 
 on:
   push:
@@ -88,39 +88,4 @@ jobs:
         with:
           name: macos-packages
           path: release/*
-          if-no-files-found: error
-
-  # ============================================
-  # JOB 4: Android
-  # ============================================
-  build-android:
-    runs-on: ubuntu-latest
-    steps:
-      - uses: actions/checkout@v4
-      - uses: actions/setup-node@v4
-        with:
-          node-version: '22'
-          cache: 'npm'
-      - uses: actions/setup-java@v4
-        with:
-          distribution: 'temurin'
-          java-version: '21'
-      - uses: android-actions/setup-android@v3
-      - name: Install npm dependencies
-        run: |
-          echo "allow-scripts=true" > .npmrc
-          npm config set registry https://registry.npmjs.org/
-          npm install
-      - name: Sync Capacitor
-        run: npx cap sync android
-      - name: Build Android APK
-        working-directory: ./android
-        run: |
-          chmod +x gradlew
-          ./gradlew assembleRelease
-      - name: Upload Android Artifacts
-        uses: actions/upload-artifact@v4
-        with:
-          name: android-packages
-          path: android/app/build/outputs/apk/release/*.apk
           if-no-files-found: error
