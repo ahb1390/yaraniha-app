@@ -31,8 +31,18 @@ jobs:
         run: sudo apt-get update && sudo apt-get install -y rpm fakeroot
       - name: Install dependencies (npm ci)
         run: npm ci
+      # کش ابزارهای دانلودی electron-builder (AppImage و...) تا هر بار دانلود نشوند
+      - name: Cache electron-builder binaries
+        uses: actions/cache@v4
+        with:
+          path: node_modules/.cache/electron-builder
+          key: electron-builder-${{ runner.os }}-${{ hashFiles('package-lock.json') }}
+          restore-keys: |
+            electron-builder-${{ runner.os }}-
       - name: Build Linux
         run: npm run dist:linux -- --publish never
+        env:
+          ELECTRON_BUILDER_CACHE: ${{ github.workspace }}/node_modules/.cache/electron-builder
       - name: Upload Linux artifacts
         uses: actions/upload-artifact@v4
         with:
@@ -58,8 +68,26 @@ jobs:
           cache: 'npm'
       - name: Install dependencies (npm ci)
         run: npm ci
+      # کش ابزارهای دانلودی electron-builder (NSIS/winCodeSign و...) تا هر بار دانلود نشوند
+      - name: Cache electron-builder binaries
+        uses: actions/cache@v4
+        with:
+          path: node_modules/.cache/electron-builder
+          key: electron-builder-${{ runner.os }}-${{ hashFiles('package-lock.json') }}
+          restore-keys: |
+            electron-builder-${{ runner.os }}-
+      # بیلد ویندوز + یک بار تلاش مجدد خودکار (رفع قطعی گذرای دانلود NSIS/winCodeSign)
       - name: Build Windows
-        run: npm run dist:win -- --publish never
+        shell: cmd
+        env:
+          ELECTRON_BUILDER_CACHE: ${{ github.workspace }}\node_modules\.cache\electron-builder
+        run: |
+          npm run dist:win -- --publish never
+          if errorlevel 1 (
+            echo First attempt failed, cleaning output and retrying once...
+            if exist release rmdir /s /q release
+            npm run dist:win -- --publish never
+          )
       - name: Upload Windows artifacts
         uses: actions/upload-artifact@v4
         with:
@@ -81,9 +109,18 @@ jobs:
           cache: 'npm'
       - name: Install dependencies (npm ci)
         run: npm ci
+      # کش ابزارهای دانلودی electron-builder تا هر بار دانلود نشوند
+      - name: Cache electron-builder binaries
+        uses: actions/cache@v4
+        with:
+          path: node_modules/.cache/electron-builder
+          key: electron-builder-${{ runner.os }}-${{ hashFiles('package-lock.json') }}
+          restore-keys: |
+            electron-builder-${{ runner.os }}-
       - name: Build macOS
         run: npm run dist:mac -- --publish never
         env:
+          ELECTRON_BUILDER_CACHE: ${{ github.workspace }}/node_modules/.cache/electron-builder
           CSC_IDENTITY_AUTO_DISCOVERY: false
       - name: Upload macOS artifacts
         uses: actions/upload-artifact@v4
