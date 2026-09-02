@@ -9,13 +9,13 @@ const fs = require('fs');
 app.commandLine.appendSwitch('disable-http-cache');
 
 // سوییچ هوشمند URL: اولویت با .env است، اگر نبود از آدرس اصلی استفاده می‌کند
-const TARGET_URL = process.env.APP_URL || 'https://app.yaran.info';
+const TARGET_URL = (process.env.APP_URL || 'https://app.yaraniha.ir').replace(/\/+$/, '');
 
 const OFFLINE_HTML = path.join(__dirname, 'offline', 'index.html');
 const CHECK_TIMEOUT_MS = 8000;
-const OFFLINE_AFTER_MS = 2500;
 
 let mainWindow = null;
+let loadingOffline = false;
 
 const gotTheLock = app.requestSingleInstanceLock();
 
@@ -96,6 +96,14 @@ function createWindow() {
     }
   );
 
+  // سخت‌سازی امنیتی: جلوگیری از ناوبری قاب اصلی به پروتکل‌های غیر از http/https
+  // (مثلاً file:// یا پروتکل‌های سفارشی) توسط محتوای وب بارگذاری‌شده
+  mainWindow.webContents.on('will-navigate', (event, url) => {
+    if (!/^https?:/i.test(url)) {
+      event.preventDefault();
+    }
+  });
+
   // لینک‌های خارجی را در مرورگر سیستم باز کن
   mainWindow.webContents.setWindowOpenHandler(({ url }) => {
     if (url.startsWith(TARGET_URL)) {
@@ -162,55 +170,91 @@ async function canReachTarget() {
 async function loadBest(win) {
   if (!win || win.isDestroyed()) return;
 
-  const fallbackTimer = setTimeout(() => {
-    if (!win.isDestroyed()) {
-      loadOffline(win);
-    }
-  }, OFFLINE_AFTER_MS);
-
   const reachable = await canReachTarget();
-
-  clearTimeout(fallbackTimer);
 
   if (!win || win.isDestroyed()) return;
 
   if (reachable) {
-    await loadOnline(win);
+    const ok = await loadOnline(win);
+    if (!ok) loadOffline(win);
   } else {
     loadOffline(win);
   }
 }
 
+// ساخت URL آنلاین با cache-buster؛ بدون دست‌کاری هش‌فرگمنت و کوئری موجود
+function buildOnlineUrl() {
+  const hashIndex = TARGET_URL.indexOf('#');
+  const base = hashIndex === -1 ? TARGET_URL : TARGET_URL.slice(0, hashIndex);
+  const fragment = hashIndex === -1 ? '' : TARGET_URL.slice(hashIndex);
+  const separator = base.includes('?') ? '&' : '?';
+  return `${base}${separator}_cb=${Date.now()}${fragment}`;
+}
+
+// خروجی: true یعنی لود آنلاین موفق بود؛ مدیریت خطا با صدا زننده (loadBest) و did-fail-load است
 async function loadOnline(win) {
-  if (!win || win.isDestroyed()) return;
+  if (!win || win.isDestroyed()) return false;
 
   try {
     await win.webContents.session.clearCache();
 
-    const cacheBuster = `${TARGET_URL.includes('?') ? '&' : '?'}_cb=${Date.now()}`;
-    const url = `${TARGET_URL}${cacheBuster}`;
-
-    await win.loadURL(url, {
+    await win.loadURL(buildOnlineUrl(), {
       extraHeaders: [
         'Cache-Control: no-cache, no-store, must-revalidate',
         'Pragma: no-cache',
         'Expires: 0'
       ].join('\n')
     });
+
+    return true;
   } catch {
-    loadOffline(win);
+    return false;
   }
 }
 
+// گارد در برابر لود تکراری/هم‌زمان صفحه آفلاین (رفع پرش و ریلود مضاعف)
 function loadOffline(win) {
   if (!win || win.isDestroyed()) return;
-  win.loadFile(OFFLINE_HTML).catch(() => {});
+  if (loadingOffline) return;
+
+  const currentUrl = win.webContents.getURL();
+  if (currentUrl.startsWith('file://') && currentUrl.includes('/offline/index.html')) {
+    return; // صفحه آفلاین از قبل نمایش داده شده است
+  }
+
+  loadingOffline = true;
+  win
+    .loadFile(OFFLINE_HTML)
+    .catch(() => {})
+    .finally(() => {
+      loadingOffline = false;
+    });
 }
 
 // دکمه تلاش مجدد در صفحه آفلاین
-ipcMain.on('retry-online', (event) => {
+ipcMain.on('retry-online', async (event) => {
   const win = BrowserWindow.fromWebContents(event.sender);
-  if (win) {
-    loadBest(win);
+  if (!win || event.sender.isDestroyed()) return;
+
+  // فقط درخواست‌های صفحات خودمان (آفلاین محلی یا دامنه مقصد) پذیرفته شود
+  const senderUrl = event.sender.getURL() || '';
+  const isFilePage = senderUrl.startsWith('file://');
+  const restAfterTarget = isFilePage ? '' : senderUrl.slice(TARGET_URL.length);
+  const isTargetPage =
+    senderUrl.startsWith(TARGET_URL) &&
+    (senderUrl.length === TARGET_URL.length || ['/', '?', '#'].includes(restAfterTarget[0]));
+  if (!isFilePage && !isTargetPage) return;
+
+  const reachable = await canReachTarget();
+  if (win.isDestroyed() || event.sender.isDestroyed()) return;
+
+  if (reachable) {
+    const ok = await loadOnline(win);
+    if (!win.isDestroyed() && !event.sender.isDestroyed()) {
+      event.sender.send('retry-result', { online: ok });
+    }
+    if (!ok) loadOffline(win);
+  } else if (!event.sender.isDestroyed()) {
+    event.sender.send('retry-result', { online: false });
   }
 });

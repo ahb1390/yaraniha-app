@@ -1,16 +1,26 @@
-name: Build Desktop Platforms Only
+name: Build Desktop Platforms
 
 on:
   push:
-    branches: [ main ]
+    branches: [main]
   workflow_dispatch:
+
+# حداقل دسترسی لازم: فقط خواندن مخزن (انتشار به GitHub Release انجام نمی‌شود)
+permissions:
+  contents: read
+
+# اگر push جدیدی بیاید، اجرای قبلی همین شاخه لغو می‌شود
+concurrency:
+  group: desktop-build-${{ github.ref }}
+  cancel-in-progress: true
 
 jobs:
   # ============================================
-  # JOB 1: Linux
+  # JOB 1: Linux (AppImage + deb + rpm + tar.gz)
   # ============================================
   build-linux:
     runs-on: ubuntu-latest
+    timeout-minutes: 30
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-node@v4
@@ -19,73 +29,67 @@ jobs:
           cache: 'npm'
       - name: Install system dependencies
         run: sudo apt-get update && sudo apt-get install -y rpm fakeroot
-      - name: Install npm dependencies
-        run: |
-          echo "allow-scripts=true" > .npmrc
-          npm config set registry https://registry.npmjs.org/
-          npm install
+      - name: Install dependencies (npm ci)
+        run: npm ci
       - name: Build Linux
-        run: npm run dist:linux
-        env:
-          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-      - name: Upload Linux Artifacts
+        run: npm run dist:linux -- --publish never
+      - name: Upload Linux artifacts
         uses: actions/upload-artifact@v4
         with:
           name: linux-packages
-          path: release/*
+          path: |
+            release/*.AppImage
+            release/*.deb
+            release/*.rpm
+            release/*.tar.gz
           if-no-files-found: error
 
   # ============================================
-  # JOB 2: Windows
+  # JOB 2: Windows (NSIS installer + portable)
   # ============================================
   build-windows:
     runs-on: windows-latest
+    timeout-minutes: 30
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-node@v4
         with:
           node-version: '22'
           cache: 'npm'
-      - name: Install npm dependencies
-        run: |
-          echo "allow-scripts=true" > .npmrc
-          npm config set registry https://registry.npmjs.org/
-          npm install
+      - name: Install dependencies (npm ci)
+        run: npm ci
       - name: Build Windows
-        run: npm run dist:win
-        env:
-          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-      - name: Upload Windows Artifacts
+        run: npm run dist:win -- --publish never
+      - name: Upload Windows artifacts
         uses: actions/upload-artifact@v4
         with:
           name: windows-packages
-          path: release/*
+          path: release/*.exe
           if-no-files-found: error
 
   # ============================================
-  # JOB 3: macOS
+  # JOB 3: macOS (dmg + zip برای x64 و arm64)
   # ============================================
   build-macos:
     runs-on: macos-latest
+    timeout-minutes: 60
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-node@v4
         with:
           node-version: '22'
           cache: 'npm'
-      - name: Install npm dependencies
-        run: |
-          echo "allow-scripts=true" > .npmrc
-          npm config set registry https://registry.npmjs.org/
-          npm install
+      - name: Install dependencies (npm ci)
+        run: npm ci
       - name: Build macOS
-        run: npm run dist:mac
+        run: npm run dist:mac -- --publish never
         env:
-          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
           CSC_IDENTITY_AUTO_DISCOVERY: false
-      - name: Upload macOS Artifacts
+      - name: Upload macOS artifacts
         uses: actions/upload-artifact@v4
         with:
           name: macos-packages
-          path: release/*
+          path: |
+            release/*.dmg
+            release/*.zip
           if-no-files-found: error

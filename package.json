@@ -21,10 +21,6 @@
     "electron-builder": "^24.13.3"
   },
   "dependencies": {
-    "@capacitor/android": "^6.0.0",
-    "@capacitor/cli": "^6.0.0",
-    "@capacitor/core": "^6.0.0",
-    "@capacitor/network": "^6.0.0",
     "dotenv": "^17.4.2"
   },
   "build": {

@@ -8,5 +8,3 @@
 *.tar.gz binary
 *.dmg binary
 *.zip binary
-*.apk binary
-*.ipa binary

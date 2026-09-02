@@ -2,7 +2,7 @@
 <html lang="fa" dir="rtl">
 <head>
   <meta charset="UTF-8" />
-  <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <meta name="theme-color" id="themeMeta" content="#F5F7FB" />
   <title>قطع ارتباط</title>
 
@@ -16,6 +16,10 @@
       var systemDark = window.matchMedia && window.matchMedia('(prefers-color-scheme: dark)').matches;
       var theme = savedTheme || (systemDark ? 'dark' : 'light');
       document.documentElement.setAttribute('data-theme', theme);
+      var themeMeta = document.getElementById('themeMeta');
+      if (themeMeta) {
+        themeMeta.setAttribute('content', theme === 'dark' ? '#0B1120' : '#F5F7FB');
+      }
     } catch (e) {}
   </script>
 
@@ -49,7 +53,6 @@
       --shadow-lg: 0 20px 40px -8px rgba(15, 23, 42, 0.12);
       --font-fa: 'Yaran', 'Vazir', 'IRANSans', Tahoma, sans-serif;
       --transition: cubic-bezier(0.4, 0, 0.2, 1);
-      --safe-bottom: env(safe-area-inset-bottom, 0px);
     }
 
     [data-theme="dark"] {
@@ -124,7 +127,7 @@
     .app-shell {
       width: 100%;
       max-width: 460px;
-      padding: 24px 16px calc(24px + var(--safe-bottom));
+      padding: 24px 16px;
       opacity: 0;
       transform: translateY(20px);
       animation: entryAnim 0.8s var(--transition) forwards;
@@ -176,6 +179,11 @@
       font-weight: 800;
       margin-bottom: 24px;
       user-select: none;
+    }
+
+    .status-badge.online {
+      background: var(--color-success-soft);
+      color: var(--color-success);
     }
 
     .status-dot {
@@ -530,20 +538,20 @@
               <path d="M8.53 16.11a6 6 0 0 1 6.95 0"></path>
               <line x1="12" y1="20" x2="12.01" y2="20"></line>
             </svg>
-            <span>اتصال Wi-Fi یا داده همراه را فعال کنید.</span>
+            <span>اتصال به اینترنت (Wi-Fi یا کابل شبکه) را بررسی کنید.</span>
           </li>
           <li>
             <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
               <path d="M23 4v6h-6"></path>
               <path d="M20.49 15a9 9 0 1 1-2.12-9.36L23 10"></path>
             </svg>
-            <span>مودم یا گوشی خود را یک بار خاموش و روشن کنید.</span>
+            <span>مودم یا روتر خود را یک بار خاموش و روشن کنید.</span>
           </li>
           <li>
             <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
               <path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"></path>
             </svg>
-            <span>فیلترشکن یا پروکسی را موقتاً غیرفعال کنید.</span>
+            <span>فیلترشکن، پروکسی یا VPN را موقتاً غیرفعال کنید.</span>
           </li>
         </ul>
 
@@ -632,22 +640,22 @@
 
       function updateNetStatus() {
         const online = navigator.onLine;
-        if (statusBadge) statusBadge.classList.toggle('online', online); // Add CSS for .online if needed, currently handled by logic
+        if (statusBadge) statusBadge.classList.toggle('online', online);
         if (statusText) {
-          statusText.textContent = online ? 'اتصال اینترنت برقرار شد' : 'اتصال اینترنت برقرار نیست';
+          statusText.textContent = online ? 'اتصال اینترنت برقرار است' : 'اتصال اینترنت برقرار نیست';
         }
       }
 
       function performRetry() {
         setLoading(true);
-        
-        // Check for Electron/OfflineApp wrapper
+
+        // مسیر اصلی: اپ دسکتاپ (Electron) — تصمیم‌گیری با فرایند اصلی است
         if (window.offlineApp && typeof window.offlineApp.retry === 'function') {
           window.offlineApp.retry();
           return;
         }
-        
-        // Standard Web/Capacitor Logic
+
+        // حالت جایگزین: باز شدن همین صفحه در یک مرورگر معمولی
         if (navigator.onLine) {
           showToast('در حال انتقال...', 'success');
           setTimeout(() => {
@@ -662,9 +670,22 @@
       // Event Listeners
       if (retryBtn) retryBtn.addEventListener('click', performRetry);
 
+      // نتیجه تلاش مجدد از سمت فرایند اصلی (Electron)
+      if (window.offlineApp && typeof window.offlineApp.onRetryResult === 'function') {
+        window.offlineApp.onRetryResult((result) => {
+          setLoading(false);
+          if (result && result.online) {
+            showToast('در حال انتقال به سامانه...', 'success');
+          } else {
+            updateNetStatus();
+            showToast('هنوز دسترسی به سامانه برقرار نیست', 'error');
+          }
+        });
+      }
+
       window.addEventListener('online', () => {
         updateNetStatus();
-        showToast('اتصال اینترنت برقرار شد؛ تلاش مجدد...', 'success');
+        showToast('اتصال اینترنت برقرار شد؛ بررسی دسترسی به سامانه...', 'success');
         setTimeout(performRetry, 1500);
       });
 
@@ -673,40 +694,8 @@
         showToast('اتصال اینترنت قطع شد', 'error');
       });
 
-      // Capacitor Network Plugin Integration (if available)
-      if (typeof window.Capacitor !== 'undefined') {
-        import('@capacitor/network').then(({ Network }) => {
-          Network.getStatus().then(status => {
-             if(status.connected && !sessionStorage.getItem('retried')) {
-                 sessionStorage.setItem('retried', '1');
-                 window.location.href = TARGET_URL;
-             }
-          });
-          
-          Network.addListener('networkStatusChange', status => {
-            if (status.connected) {
-              showToast('اتصال برقرار شد', 'success');
-              setTimeout(() => window.location.href = TARGET_URL, 1000);
-            } else {
-              showToast('اتصال قطع شد', 'error');
-            }
-          });
-        }).catch(e => console.log('Capacitor Network not available'));
-      }
-
       // Initial Check
       updateNetStatus();
-      
-      // Auto-retry on load if online and hasn't retried yet
-      try {
-        if (navigator.onLine && !sessionStorage.getItem('offlineAutoRetried') && !window.offlineApp) {
-          sessionStorage.setItem('offlineAutoRetried', '1');
-          setTimeout(() => {
-            showToast('اتصال ظاهراً برقرار است؛ تلاش مجدد...', 'success');
-            performRetry();
-          }, 1500);
-        }
-      } catch (e) {}
 
     })();
   </script>
