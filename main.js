@@ -9,7 +9,7 @@ const fs = require('fs');
 app.commandLine.appendSwitch('disable-http-cache');
 
 // سوییچ هوشمند URL: اولویت با .env است، اگر نبود از آدرس اصلی استفاده می‌کند
-const TARGET_URL = (process.env.APP_URL || 'https://app.yaranamooz.ir').replace(/\/+$/, '');
+const TARGET_URL = (process.env.APP_URL || 'https://app.yaran.info').replace(/\/+$/, '');
 
 const OFFLINE_HTML = path.join(__dirname, 'offline', 'index.html');
 const CHECK_TIMEOUT_MS = 8000;
