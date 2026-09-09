@@ -5,8 +5,8 @@
   "description": "A Yaraniha Desktop app",
   "main": "main.js",
   "author": {
-    "name": "Amir Hossein Borzooei",
-    "email": "ahb1390.ir@gmail.com"
+    "name": "Yaraniha Team",
+    "email": "info@yaran.info"
   },
   "license": "MIT",
   "scripts": {
